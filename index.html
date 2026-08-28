@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>La cible, visez juste !</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#efefef;color:#111;font-family:Arial,sans-serif}main{max-width:980px;margin:auto;padding:14px}h1{text-align:center;font-size:24px;margin:8px 0 14px}.message{background:#fff3b8;border:2px solid #111;border-radius:14px;padding:12px;text-align:center;font-weight:800;position:sticky;top:8px;z-index:20}.zone{background:#fff;border-radius:18px;padding:14px;margin-top:14px;box-shadow:0 3px 12px #0001}.zone h2{font-size:18px;margin:0 0 12px}.row{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px}.card{width:132px;aspect-ratio:63/88;flex:0 0 auto;border:3px solid #111;border-radius:12px;background:#fff;position:relative;overflow:hidden;box-shadow:0 3px 8px #0002}.pick{cursor:pointer}.pick:active{transform:scale(.97)}.bar{position:absolute;left:15%;right:15%;top:11%;height:12%;background:#111}.bar.round{border-radius:999px}.bar.straight{border-radius:0}.bar.point{clip-path:polygon(0 0,38% 0,50% 100%,62% 0,100% 0,100% 45%,62% 45%,50% 100%,38% 45%,0 45%)}.sector{position:absolute;left:50%;top:23%;width:2px;height:62%;background:#111;transform-origin:top}.s1{transform:rotate(-27deg)}.s2{transform:rotate(-13deg)}.s3{transform:rotate(13deg)}.s4{transform:rotate(27deg)}.bull{position:absolute;bottom:6%;left:50%;transform:translateX(-50%);width:34%;height:12%;border:3px solid #111;border-radius:70% 70% 12px 12px}.num{position:absolute;font-family:Impact,Arial Black,sans-serif;font-weight:900;line-height:1;background:#fff;padding:0 2px}.center{font-size:42px;top:34%;left:50%;transform:translateX(-50%)}.left{font-size:30px;left:9%;top:60%}.right{font-size:30px;right:9%;top:60%}.die{position:absolute;top:53%;left:50%;transform:translateX(-50%);font-size:18px}.special{display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-weight:900;font-size:19px}.fly{position:fixed;z-index:999;transition:all .8s cubic-bezier(.2,.8,.2,1);pointer-events:none}.new{animation:arrive .5s ease}@keyframes arrive{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}button{border:0;border-radius:12px;background:#111;color:#fff;font-weight:800;padding:12px 16px;font-size:16px}.muted{color:#666;font-size:12px;margin-top:8px}@media(max-width:520px){main{padding:10px}.card{width:112px}.center{font-size:36px}.left,.right{font-size:26px}}
+</style>
+</head>
+<body><main>
+<h1>🎯 La cible, visez juste !</h1>
+<div id="msg" class="message">À vous de choisir une carte.</div>
+<section class="zone"><h2>🖐️ Votre main</h2><div id="hand" class="row"></div></section>
+<section class="zone"><h2>🌊 Rivière</h2><div id="river" class="row"></div></section>
+<section class="zone"><button id="restart">Nouvelle partie</button><div class="muted">Prototype web de test — V15 en ligne.</div></section>
+</main>
+<script>
+const targets=[
+{c:5,a:[12,20],shape:'round'},{c:18,a:[1,4],shape:'round'},{c:20,a:[5,1],shape:'round'},{c:19,a:[3,7],shape:'round'},{c:1,a:[20,18],shape:'round'},{c:3,a:[17,19],shape:'round'},
+{c:8,a:[16,11],shape:'straight'},{c:17,a:[2,3],shape:'straight'},{c:13,a:[4,6],shape:'straight'},{c:16,a:[7,8],shape:'straight'},{c:6,a:[13,10],shape:'straight'},{c:7,a:[19,16],shape:'straight'},{c:4,a:[18,13],shape:'straight'},
+{c:14,a:[11,9],shape:'point'},{c:10,a:[6,15],shape:'point'},{c:9,a:[14,12],shape:'point'},{c:12,a:[9,5],shape:'point'},{c:15,a:[10,2],shape:'point'},{c:2,a:[15,17],shape:'point'},{c:11,a:[8,14],shape:'point'},
+{c:25,a:[],shape:'round'},{c:25,a:[],shape:'point'}];
+const specials=[{type:'extra',text:'EXTRA'},{type:'extra',text:'EXTRA'},{type:'manquee',text:'✖ MANQUÉE'},{type:'choix',text:'? VALEUR AU CHOIX'}];
+let deck=[],river=[],hand=[],bot=[],locked=false,turn='H';
+const $=s=>document.querySelector(s),wait=ms=>new Promise(r=>setTimeout(r,ms));
+function shuffle(a){a=[...a];for(let i=a.length-1;i;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function cardEl(c){const d=document.createElement('div');d.className='card'+(c.type?' special':'');if(c.type){d.textContent=c.text;return d}d.innerHTML=`<div class="bar ${c.shape}"></div><div class="sector s1"></div><div class="sector s2"></div><div class="sector s3"></div><div class="sector s4"></div><div class="bull"></div><div class="num center">${c.c}</div>${c.a.length?`<div class="num left">${c.a[0]}</div><div class="num right">${c.a[1]}</div>`:''}<div class="die">🎲</div>`;return d}
+function fill(){while(river.length<4&&deck.length)river.push(deck.shift())}
+function render(newIndex=-1){const h=$('#hand');h.innerHTML='';hand.forEach(c=>h.appendChild(cardEl(c)));const r=$('#river');r.innerHTML='';river.forEach((c,i)=>{const d=cardEl(c);if(i===newIndex)d.classList.add('new');if(turn==='H'&&!locked&&hand.length<3){d.classList.add('pick');d.onclick=()=>humanPick(i,d)}r.appendChild(d)})}
+async function fly(el,toBot=false){const b=el.getBoundingClientRect(),cl=el.cloneNode(true);cl.classList.add('fly');Object.assign(cl.style,{left:b.left+'px',top:b.top+'px',width:b.width+'px',height:b.height+'px'});document.body.appendChild(cl);await wait(30);if(toBot){cl.style.top=(-b.height-30)+'px';cl.style.left=(innerWidth/2-b.width/2)+'px';cl.style.opacity='.15';cl.style.transform='rotate(8deg) scale(.85)'}else{const hb=$('#hand').getBoundingClientRect();cl.style.left=(hb.left+hand.length*(b.width+10))+'px';cl.style.top=hb.top+'px'}await wait(820);cl.remove()}
+async function humanPick(i,el){if(locked)return;locked=true;$('#msg').textContent='Vous récupérez la carte…';await fly(el,false);hand.push(river.splice(i,1)[0]);render();const before=river.length;fill();render(river.length>before?river.length-1:-1);await wait(400);turn='B';await botPick();turn='H';locked=false;$('#msg').textContent=hand.length<3?'À vous de choisir une carte.':'✅ Vous avez vos 3 cartes.';render()}
+async function botPick(){if(!river.length||bot.length>=3)return;$('#msg').textContent='Le bot choisit…';await wait(450);const i=Math.floor(Math.random()*river.length),el=$('#river').children[i];await fly(el,true);bot.push(river.splice(i,1)[0]);render();const before=river.length;fill();render(river.length>before?river.length-1:-1);await wait(400)}
+function newGame(){deck=shuffle(targets.concat(specials));river=[];hand=[];bot=[];locked=false;turn='H';fill();$('#msg').textContent='À vous de choisir une carte.';render()}
+$('#restart').onclick=newGame;newGame();
+</script></body></html>
